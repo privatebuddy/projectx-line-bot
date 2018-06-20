@@ -1,42 +1,53 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+var express = require('express')
+var bodyParser = require('body-parser')
+var request = require('request')
+var app = express()
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+app.use(bodyParser.json())
 
-var app = express();
-const port = process.env.PORT || 4000;
-// view engine setup
-app.listen(port);
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'pug');
+app.set('port', (process.env.PORT || 4000))
+app.use(bodyParser.urlencoded({extended: true}))
+app.use(bodyParser.json())
 
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+app.post('/webhook', (req, res) => {
+    var text = req.body.events[0].message.text
+    var sender = req.body.events[0].source.userId
+    var replyToken = req.body.events[0].replyToken
+    console.log(text, sender, replyToken)
+    console.log(typeof sender, typeof text)
+    // console.log(req.body.events[0])
+    if (text === 'สวัสดี' || text === 'Hello' || text === 'hello') {
+        sendText(sender, text)
+    }
+    res.sendStatus(200)
+})
 
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
+function sendText (sender, text) {
+    let data = {
+        to: sender,
+        messages: [
+            {
+                type: 'text',
+                text: 'สวัสดีค่ะ เราเป็นผู้ช่วยปรึกษาด้านความรัก สำหรับหมามิ้น 💞'
+            }
+        ]
+    }
+    request({
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer key Api'
+        },
+        url: 'https://api.line.me/v2/bot/message/push',
+        method: 'POST',
+        body: data,
+        json: true
+    }, function (err, res, body) {
+        if (err) console.log('error')
+        if (res) console.log('success')
+        if (body) console.log(body)
+    })
+}
 
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  next(createError(404));
+app.listen(app.get('port'), function () {
+    console.log('run at port', app.get('port'))
 });
-
-// error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
-});
-
-module.exports = app;
